@@ -24,6 +24,21 @@ class DirectoryView(MethodView):
                 if directory['id'] == directory_id:
                     return jsonify(directory)
             return jsonify({'error': 'Directory not found'}), 404
+        
+    def patch(self, directory_id):
+        update_data = request.get_json()
+        for directory in directories:
+            if directory['id'] == directory_id:
+                directory.update(update_data)
+                return jsonify(directory)
+        return jsonify({'error': 'Directory not found'}), 404
+
+    def delete(self, directory_id):
+        for index, directory in enumerate(directories):
+            if directory['id'] == directory_id:
+                del directories[index]
+                return jsonify({'success': True})
+        return jsonify({'error': 'Directory not found'}), 404
 
 
 app.add_url_rule('/status/', view_func=StatusView.as_view('status'))
