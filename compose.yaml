@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  postgres-db:
+    image: "postgres:15.0-alpine"
+    restart: always
+    environment:
+      POSTGRES_DB: cnp2_database
+      POSTGRES_USER: cnp2_user
+      POSTGRES_PASSWORD: my_cool_secret_2
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cnp2_net
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      start_period: 30s
+
+  cnp2-app:
+    build: .
+    restart: always
+    ports:
+      - 8083:8000
+    environment:
+      DJANGO_DATABASES_DEFAULT_NAME: cnp2_database
+      DJANGO_DATABASES_DEFAULT_USER: cnp2_user
+      DJANGO_DATABASES_DEFAULT_PASSWORD: my_cool_secret_2
+      DJANGO_DATABASES_DEFAULT_HOST: postgres-db
+      DJANGO_ALLOWED_HOSTS: "*"
+    networks:
+      - cnp2_net
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+        restart: true
+
+volumes:
+  postgres_data:
+
+networks:
+  cnp2_net:
