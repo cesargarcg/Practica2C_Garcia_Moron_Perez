@@ -1,61 +1,74 @@
-from flask import Flask, request, jsonify
-from flask.views import MethodView
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-# Aquí almacenaremos los directorios para este ejemplo
-directories = []
+# Lista de objetos
+objects = []
+# Variable para llevar el seguimiento del último ID asignado
+last_id = 0
 
-class StatusView(MethodView):
-    def get(self):
-        return jsonify('pong')
+# Endpoint: GET /status/
+@app.route('/status/')
+def get_status():
+    return 'pong'
 
-class DirectoryView(MethodView):
-    def get(self, directory_id=None):
-        if directory_id is None:
-            return jsonify({
-                "count": len(directories),
-                "next": "link a siguiente página",
-                "previous": "link a página previa",
-                "results": directories
-            })
-        else:
-            for directory in directories:
-                if directory['id'] == directory_id:
-                    return jsonify(directory)
-            return jsonify({'error': 'Directory not found'}), 404
-        
-    def patch(self, directory_id):
-        update_data = request.get_json()
-        for directory in directories:
-            if directory['id'] == directory_id:
-                directory.update(update_data)
-                return jsonify(directory)
-        return jsonify({'error': 'Directory not found'}), 404
+# Endpoint: GET /directories/
+@app.route('/directories/')
+def get_directories():
+    return jsonify({
+        "count": len(objects),
+        "next": 'link a siguiente página',
+        "previous": 'link a página previa',
+        "results": objects
+    })
 
-    def delete(self, directory_id):
-        for index, directory in enumerate(directories):
-            if directory['id'] == directory_id:
-                del directories[index]
-                return jsonify({'success': True})
-        return jsonify({'error': 'Directory not found'}), 404
-    def post(self):
-            new_directory = request.get_json()
-            new_directory['id'] = len(directories) + 1
-            directories.append(new_directory)
-            return jsonify(new_directory), 201
+# Endpoint: POST /directories/
+@app.route('/directories/', methods=['POST'])
+def create_directory():
+    global last_id
+    data = request.get_json()
+    # Asignar un nuevo ID incremental
+    last_id += 1
+    data['id'] = last_id
+    objects.append(data)
+    return jsonify(data), 201
 
-    def put(self, directory_id):
-        update_data = request.get_json()
-        for directory in directories:
-            if directory['id'] == directory_id:
-                directory.update(update_data)
-                return jsonify(directory)
-        return jsonify({'error': 'Directory not found'}), 404
+# Endpoint: GET /directories/{id}
+@app.route('/directories/<int:id>')
+def get_directory(id):
+    directory = next((obj for obj in objects if obj['id'] == id), None)
+    if directory:
+        return jsonify(directory)
+    return jsonify({'error': 'Object not found'}), 404
 
-app.add_url_rule('/status/', view_func=StatusView.as_view('status'))
-app.add_url_rule('/directories/', view_func=DirectoryView.as_view('directories'))
-app.add_url_rule('/directories/<int:directory_id>/', view_func=DirectoryView.as_view('directory'))
+# Endpoint: PUT /directories/{id}
+@app.route('/directories/<int:id>', methods=['PUT'])
+def update_directory(id):
+    data = request.get_json()
+    directory = next((obj for obj in objects if obj['id'] == id), None)
+    if directory:
+        directory.update(data)
+        return jsonify(directory)
+    return jsonify({'error': 'Object not found'}), 404
+
+# Endpoint: PATCH /directories/{id}
+@app.route('/directories/<int:id>', methods=['PATCH'])
+def partial_update_directory(id):
+    data = request.get_json()
+    directory = next((obj for obj in objects if obj['id'] == id), None)
+    if directory:
+        directory.update(data)
+        return jsonify(directory)
+    return jsonify({'error': 'Object not found'}), 404
+
+# Endpoint: DELETE /directories/{id}
+@app.route('/directories/<int:id>', methods=['DELETE'])
+def delete_directory(id):
+    directory = next((obj for obj in objects if obj['id'] == id), None)
+    if directory:
+        objects.remove(directory)
+        return jsonify({'message': 'Object deleted'})
+    return jsonify({'error': 'Object not found'}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
