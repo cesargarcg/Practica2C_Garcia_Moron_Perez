@@ -7,7 +7,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://cnp2_user:my_cool_secret_2
 db = SQLAlchemy(app)
 
 class Directory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(50), nullable=False)
     emails = db.Column(ARRAY(db.String), nullable=False)
 
@@ -36,8 +36,7 @@ def get_directories():
 
 @app.route('/directories/', methods=['POST'])
 def create_directory():
-    data = request.get_json()
-    new_directory = Directory(name=data['name'], emails=data['emails'])
+    new_directory = Directory(**request.json)
     db.session.add(new_directory)
     db.session.commit()
 
