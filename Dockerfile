@@ -1,36 +1,20 @@
-FROM python:3.12-slim as build
+# Usa la imagen base de Python
+FROM python:3.9-slim-buster
 
-RUN apt-get update -y \
-    && apt-get install -y build-essential libpq-dev git \
-    && pip install virtualenv \
-    && virtualenv /opt/cn_p2_simple_ws/venv \
-    && . /opt/cn_p2_simple_ws/venv/bin/activate \
-    && pip install gunicorn
+# Establece el directorio de trabajo en /app
+WORKDIR /app
 
-COPY . /cn_p2_simple_ws
+# Copia el archivo requirements.txt al contenedor
+COPY requirements.txt .
 
-WORKDIR /cn_p2_simple_ws
+# Instala las dependencias del proyecto
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN . /opt/cn_p2_simple_ws/venv/bin/activate \
-    && pip install .
+# Copia el resto del código fuente al contenedor
+COPY . .
 
-FROM python:3.12-slim
+# Expone el puerto 5000 para acceder a la aplicación Flask
+EXPOSE 5000
 
-COPY --from=build /opt/cn_p2_simple_ws /opt/cn_p2_simple_ws
-COPY entrypoint.sh /bin/entrypoint.sh
-
-RUN apt-get update -y \
-    && apt-get install -y libpq5\
-    && apt-get clean \
-    && groupadd -g 5000 -r wsuser \
-    && useradd -r -M -u 5000 -g wsuser wsuser \
-    && chown -R wsuser:wsuser /opt/cn_p2_simple_ws \
-    && chmod +x /bin/entrypoint.sh
-    
-
-WORKDIR /opt/cn_p2_simple_ws
-USER wsuser:wsuser
-
-EXPOSE 8000
-
-ENTRYPOINT ["entrypoint.sh"]
+# Define el comando para ejecutar la aplicación
+CMD ["python", "app.py"]

@@ -1,72 +1,102 @@
 from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.dialects.postgresql import ARRAY
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://cnp2_user:my_cool_secret_2@postgres-db/cnp2_database'
+db = SQLAlchemy(app)
 
-# Lista de objetos
-objects = []
-# Variable para llevar el seguimiento del último ID asignado
-last_id = 0
+class Directory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    emails = db.Column(ARRAY(db.String), nullable=False)
 
-# Endpoint: GET /status/
 @app.route('/status/')
 def get_status():
     return 'pong'
 
-# Endpoint: GET /directories/
 @app.route('/directories/')
 def get_directories():
+    directories = Directory.query.all()
+    directory_list = []
+    for directory in directories:
+        directory_data = {
+            'id': directory.id,
+            'name': directory.name,
+            'emails': directory.emails
+        }
+        directory_list.append(directory_data)
+
     return jsonify({
-        "count": len(objects),
+        "count": len(directory_list),
         "next": 'link a siguiente página',
         "previous": 'link a página previa',
-        "results": objects
+        "results": directory_list
     })
 
-# Endpoint: POST /directories/
 @app.route('/directories/', methods=['POST'])
 def create_directory():
-    global last_id
     data = request.get_json()
-    # Asignar un nuevo ID incremental
-    last_id += 1
-    data['id'] = last_id
-    objects.append(data)
-    return jsonify(data), 201
+    new_directory = Directory(name=data['name'], emails=data['emails'])
+    db.session.add(new_directory)
+    db.session.commit()
 
-# Endpoint: GET /directories/{id}
+    return jsonify({
+        'id': new_directory.id,
+        'name': new_directory.name,
+        'emails': new_directory.emails
+    }), 201
+
 @app.route('/directories/<int:id>')
 def get_directory(id):
-    directory = next((obj for obj in objects if obj['id'] == id), None)
+    directory = Directory.query.get(id)
     if directory:
-        return jsonify(directory)
+        directory_data = {
+            'id': directory.id,
+            'name': directory.name,
+            'emails': directory.emails
+        }
+        return jsonify(directory_data)
     return jsonify({'error': 'Object not found'}), 404
 
-# Endpoint: PUT /directories/{id}
 @app.route('/directories/<int:id>', methods=['PUT'])
 def update_directory(id):
     data = request.get_json()
-    directory = next((obj for obj in objects if obj['id'] == id), None)
+    directory = Directory.query.get(id)
     if directory:
-        directory.update(data)
-        return jsonify(directory)
+        directory.name = data['name']
+        directory.emails = data['emails']
+        db.session.commit()
+        return jsonify({
+            'id': directory.id,
+            'name': directory.name,
+            'emails': directory.emails
+        })
     return jsonify({'error': 'Object not found'}), 404
 
-# Endpoint: PATCH /directories/{id}
 @app.route('/directories/<int:id>', methods=['PATCH'])
 def partial_update_directory(id):
     data = request.get_json()
-    directory = next((obj for obj in objects if obj['id'] == id), None)
+    directory = Directory.query.get(id)
     if directory:
-        directory.update(data)
-        return jsonify(directory)
+        if 'name' in data:
+            directory.name = data['name']
+        if 'emails' in data:
+            directory.emails = data['emails']
+        db.session.commit()
+        return jsonify({
+            'id': directory.id,
+            'name': directory.name,
+            'emails': directory.emails
+        })
     return jsonify({'error': 'Object not found'}), 404
 
-# Endpoint: DELETE /directories/{id}
 @app.route('/directories/<int:id>', methods=['DELETE'])
 def delete_directory(id):
-    directory = next((obj for obj in objects if obj['id'] == id), None)
+    directory = Directory.query.get(id)
     if directory:
-        objects.remove(directory)
+        db.session.delete(directory)
+        db.session.commit()
         return jsonify({'message': 'Object deleted'})
     return jsonify({'error': 'Object not found'}), 404
 
