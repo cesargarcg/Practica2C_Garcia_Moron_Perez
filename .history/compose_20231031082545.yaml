@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 5000:5000
+    depends_on:
+      - postgres-db
+  postgres-db:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=cnp2_user
+      - POSTGRES_PASSWORD=my_cool_secret_2
+      - POSTGRES_DB=cnp2_database
